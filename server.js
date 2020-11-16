@@ -1,12 +1,12 @@
-var express = require('express');
-var { buildSchema } = require('graphql');
-var { graphqlHTTP } = require('express-graphql');
-// GraphQL schema
-var schema = buildSchema(`
+const schema = buildSchema(`
     type Query {
         course(id: Int!): Course
         courses(topic: String): [Course]
-        courseTitle(title: String): [Course]
+        coursesByTitle(title: String!): [Course]
+    },
+    type Mutation {
+        updateCourseTopic(id: Int!, topic: String!): Course
+        addCourse(id: Int!, title: String, author: String, description: String, topic: String, url: String): [Course]
     },
     type Course {
         id: Int
@@ -18,7 +18,7 @@ var schema = buildSchema(`
     }
 `);
 
-var coursesData = [
+const coursesData = [
     {
         id: 1,
         title: 'The Complete Node.js Developer Course',
@@ -45,34 +45,55 @@ var coursesData = [
     }
 ]
 
-var getCourse = function (args) {
-    var id = args.id;
+const getCourse = function (args) {
+    const id = args.id;
     return coursesData.filter(course => {
-        return course.id == id;
+        return course.id === id;
     })[0];
 }
 
-var getCourses = function (args) {
+const getCourses = function (args) {
     if (args.topic) {
-        var topic = args.topic;
+        const topic = args.topic;
         return coursesData.filter(course => course.topic === topic);
     } else {
         return coursesData;
     }
 }
 
-const getCourseString = function (args) {
-    const title = args.title;
-    return coursesData.filter(course => {
-        if (course.title.includes(title)) return coursesData;
-    });
-
+const getCoursesByTitle = function (args) {
+    const queryTitle = args.title;
+    return coursesData.filter(course => course.title.includes(queryTitle));
 }
 
-var root = {
+const updateCourseTopic = function ({id, topic}) {
+    coursesData.map(course => {
+        if (course.id === id) {
+            course.topic = topic;
+            return course;
+        }
+    });
+    return coursesData.filter(course => course.id === id) [0];
+}
+
+const addCourse = function (args) {
+    const newCourse = {
+        "title": args.title,
+        "author": args.author,
+        "description": args.description,
+        "topic": args.topic,
+        "url": args.url
+    }
+    coursesData.push(newCourse)
+    return coursesData;
+}
+
+const root = {
     course: getCourse,
     courses: getCourses,
-    courseTitle: getCourseString,
+    coursesByTitle: getCoursesByTitle,
+    updateCourseTopic: updateCourseTopic,
+    addCourse: addCourse
 };
 
 var app = express();
